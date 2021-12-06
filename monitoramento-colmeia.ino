@@ -1,45 +1,39 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
-#include <WiFiClient.h>
 #include <DHT.h>
 #include <DHT_U.h>
 #include <HX711.h>
 
-#define DHTPIN 2
+#define DHTPIN 4
 #define DHTTYPE DHT11
 
-#define pinDT  4
-#define pinSCK  3
+#define pinDT  13
+#define pinSCK  15
 
 DHT dht(DHTPIN, DHT11);
 HX711 scale;
-HTTPClient http;
-WiFiClient client;
 
-const char* ssid = "yourNetworkName";
-const char* password = "yourNetworkPassword";
+const char* ssid = "Edson Isaac";
+const char* password = "isaacedsonlima";
 
 const char codigo[] = "0001";
 
-long tempoDelay = 60000 * 1;
+long tempoDelay = 60000 * 15;
 unsigned long ultimaLeitura = 0;
 unsigned long tempoDecorrido = 0;
 
 float temperatura, umidade, peso;
-String url;
 
-void setup() {
-  
+void setup () {
   Serial.begin(115200);
   setupWifi();
   setupSensors();
-  
+
   delay(1000);
   sendData();
 }
- 
+
 void loop() {
-  
   tempoDecorrido = millis();
 
   if (tempoDecorrido < ultimaLeitura) {
@@ -53,25 +47,30 @@ void loop() {
 }
 
 void sendData() {
-  
-  temperatura = dht.readTemperature(); 
-  umidade = dht.readHumidity();
-  peso = scale.get_units(5);
-  
-  delay(100);
+ 
+  if (WiFi.status() == WL_CONNECTED) {
 
-  if (WiFi.status() == WL_CONNECTED) { //Check WiFi connection status
+    temperatura = dht.readTemperature(); 
+    umidade = dht.readHumidity();
+    peso = scale.get_units(5);
+
+    Serial.println("Temperatura: " + String(temperatura) + " | Umidade: " + String(umidade) + " | Peso: " + String(peso));
     
+    WiFiClientSecure client;
+    HTTPClient http;
+    
+    client.setInsecure();
+    client.connect("https://beemonitor-backend.herokuapp.com", 443);
     http.begin(client, "https://beemonitor-backend.herokuapp.com/colmeias/update?codigo=" + String(codigo) + "&temperatura=" + String(temperatura) + "&umidade=" + String(umidade) + "&peso=" + String(peso));
-    int httpCode = http.GET(); //Send http request and return request status code
-
-    if (httpCode > 0) Serial.println(http.getString()); //Prints the request response
     
-    http.end(); //
+    if (http.GET() > 0) {
+      Serial.println(http.getString());
+    }
+    
+    http.end();
   } else {
-      Serial.println("Erro! Conexão com a rede Wi-Fi não estabelecida!");
-      setupWifi();
-      sendData();
+    setupWifi();
+    sendData();
   }
 }
 
@@ -83,16 +82,18 @@ void setupSensors() {
 }
 
 void setupWifi () {
+  Serial.println("Conectando a Rede: ");
+  Serial.println(ssid);
+
   WiFi.begin(ssid, password);
-  
-  Serial.println("Conectando a rede Wi-Fi: " + (String)ssid);
-  
-  while(WiFi.status() != WL_CONNECTED) {
+
+  while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
     Serial.print(".");
   }
-
+  
   Serial.println("");
-  Serial.print("Conexão realizada com sucesso! Endereço IP: ");
+  Serial.println("WiFi Conectado");
+  Serial.print("IP: ");
   Serial.println(WiFi.localIP());
 }
