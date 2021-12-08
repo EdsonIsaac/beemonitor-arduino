@@ -61,9 +61,13 @@ void sendData() {
     
     client.setInsecure();
     client.connect("https://beemonitor-backend.herokuapp.com", 443);
-    http.begin(client, "https://beemonitor-backend.herokuapp.com/colmeias/update?codigo=" + String(codigo) + "&temperatura=" + String(temperatura) + "&umidade=" + String(umidade) + "&peso=" + String(peso));
     
-    if (http.GET() > 0) {
+    http.begin(client, "https://beemonitor-backend.herokuapp.com/colmeias/" + String(codigo) + "/medicoes");
+    http.addHeader("Content-Type", "application/json");
+    
+    int httpCode = http.POST("{\"temperatura\":\"" + String(temperatura) + "\",\"umidade\":\"" + String(umidade) + "\",\"peso\":\"" + String(peso) + "\"}");
+    
+    if (httpCode > 0) {
       Serial.println(http.getString());
     }
     
